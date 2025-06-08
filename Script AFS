@@ -1,0 +1,389 @@
+-- Jhonny Scripts - GUI Unificada personalizada com painel de coordenadas arrastável
+
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+
+-- Paleta de cores
+local roxo = Color3.fromRGB(160, 80, 255)
+local preto = Color3.fromRGB(13, 13, 20)
+local cinza = Color3.fromRGB(30, 30, 40)
+local branco = Color3.fromRGB(255, 255, 255)
+
+-- GUI raiz
+local gui = Instance.new("ScreenGui")
+gui.Name = "JhonnyScriptsGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Fundo decorado (com borda)
+local fundo = Instance.new("Frame")
+fundo.Name = "Fundo"
+fundo.Size = UDim2.new(0, 420, 0, 460)
+fundo.Position = UDim2.new(0.5, -210, 0.5, -230)
+fundo.BackgroundColor3 = preto
+fundo.BorderSizePixel = 0
+fundo.AnchorPoint = Vector2.new(0.5, 0.5)
+fundo.Parent = gui
+
+local borda = Instance.new("UIStroke")
+borda.Color = roxo
+borda.Thickness = 4
+borda.Parent = fundo
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 18)
+corner.Parent = fundo
+
+-- Drag funcionalidade para janela principal
+local UserInputService = game:GetService("UserInputService")
+local dragging, dragInput, dragStart, startPos
+
+local function updateDrag(input)
+	if not dragging then return end
+	local delta = input.Position - dragStart
+	fundo.Position = UDim2.new(
+		startPos.X.Scale,
+		startPos.X.Offset + delta.X,
+		startPos.Y.Scale,
+		startPos.Y.Offset + delta.Y
+	)
+end
+
+fundo.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = fundo.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+fundo.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		updateDrag(input)
+	end
+end)
+
+-- Título + barra superior
+local tituloBar = Instance.new("Frame")
+tituloBar.Name = "TituloBar"
+tituloBar.Size = UDim2.new(1, 0, 0, 60)
+tituloBar.Position = UDim2.new(0, 0, 0, 0)
+tituloBar.BackgroundColor3 = preto
+tituloBar.BorderSizePixel = 0
+tituloBar.Parent = fundo
+
+local titulo = Instance.new("TextLabel")
+titulo.Size = UDim2.new(1, -120, 1, 0)
+titulo.Position = UDim2.new(0, 0, 0, 0)
+titulo.BackgroundTransparency = 1
+titulo.Text = "Jhonny Scripts"
+titulo.Font = Enum.Font.GothamBlack
+titulo.TextSize = 34
+titulo.TextColor3 = roxo
+titulo.TextStrokeTransparency = 0.5
+titulo.TextXAlignment = Enum.TextXAlignment.Left
+titulo.Parent = tituloBar
+
+-- Minimizar
+local minimizarBtn = Instance.new("TextButton")
+minimizarBtn.Size = UDim2.new(0, 50, 0, 30)
+minimizarBtn.Position = UDim2.new(1, -110, 0.5, -15)
+minimizarBtn.BackgroundColor3 = cinza
+minimizarBtn.TextColor3 = roxo
+minimizarBtn.Text = "_"
+minimizarBtn.Font = Enum.Font.GothamBold
+minimizarBtn.TextSize = 28
+minimizarBtn.AutoButtonColor = true
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 8)
+minCorner.Parent = minimizarBtn
+minimizarBtn.Parent = tituloBar
+
+-- Fechar
+local fecharBtn = Instance.new("TextButton")
+fecharBtn.Size = UDim2.new(0, 50, 0, 30)
+fecharBtn.Position = UDim2.new(1, -55, 0.5, -15)
+fecharBtn.BackgroundColor3 = cinza
+fecharBtn.TextColor3 = roxo
+fecharBtn.Text = "X"
+fecharBtn.Font = Enum.Font.GothamBold
+fecharBtn.TextSize = 22
+fecharBtn.AutoButtonColor = true
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = fecharBtn
+fecharBtn.Parent = tituloBar
+
+-- Minimizar lógica
+local minimized = false
+local originalSize = fundo.Size
+local originalButtonsVisible = {}
+
+minimizarBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		fundo.Size = UDim2.new(0, 420, 0, 60)
+		for _, child in pairs(fundo:GetChildren()) do
+			if child:IsA("TextButton") or (child:IsA("Frame") and child.Name ~= "TituloBar") then
+				originalButtonsVisible[child] = child.Visible
+				child.Visible = false
+			end
+		end
+	else
+		fundo.Size = originalSize
+		for child, wasVisible in pairs(originalButtonsVisible) do
+			if child and child.Parent == fundo then
+				child.Visible = wasVisible
+			end
+		end
+	end
+end)
+
+-- Fechar lógica
+fecharBtn.MouseButton1Click:Connect(function()
+	gui:Destroy()
+	if _G.CoordenadasScreenGui then
+		_G.CoordenadasScreenGui:Destroy()
+		_G.CoordenadasScreenGui = nil
+	end
+end)
+
+-- Função auxiliar para criar botões roxos
+local function criarBotao(nome, texto, posY)
+    local btn = Instance.new("TextButton")
+    btn.Name = nome
+    btn.Size = UDim2.new(0.8, 0, 0, 48)
+    btn.Position = UDim2.new(0.1, 0, 0, posY)
+    btn.BackgroundColor3 = cinza
+    btn.TextColor3 = roxo
+    btn.Text = texto
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 22
+    btn.TextStrokeTransparency = 0.7
+    btn.AutoButtonColor = true
+    btn.Visible = true
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 12)
+    btnCorner.Parent = btn
+
+    btn.Parent = fundo
+    return btn
+end
+
+-- TP SUMMER
+local tpBtn = criarBotao("TPBtn", "TP SUMMER", 74)
+tpBtn.MouseButton1Click:Connect(function()
+    local summerMaisPerto = Vector3.new(14621, -170, 3732)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(summerMaisPerto)
+        tpBtn.Text = "Teleportado!"
+        wait(1)
+        tpBtn.Text = "TP SUMMER"
+    end
+end)
+
+-- Ativar Coordenadas
+local coordBtn = criarBotao("CoordBtn", "Ativar Coordenadas", 132)
+local coordAtivo = false
+
+-- Painel de coordenadas arrastável reutilizando seu código
+local function criarCoordenadasScreenGui()
+	if _G.CoordenadasScreenGui then
+		_G.CoordenadasScreenGui.Enabled = true
+		return
+	end
+
+	local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+	gui.Name = "PosicaoGUI"
+	_G.CoordenadasScreenGui = gui
+
+	local botao = Instance.new("TextButton")
+	botao.Size = UDim2.new(0, 200, 0, 50)
+	botao.Position = UDim2.new(0, 20, 0, 20)
+	botao.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	botao.TextColor3 = Color3.fromRGB(255, 255, 255)
+	botao.TextScaled = true
+	botao.Font = Enum.Font.SourceSansBold
+	botao.Text = "Carregando..."
+	botao.Parent = gui
+
+	-- Botão de fechar
+	local fechar = Instance.new("TextButton")
+	fechar.Size = UDim2.new(0, 32, 0, 32)
+	fechar.Position = UDim2.new(1, -36, 0, 4)
+	fechar.BackgroundColor3 = Color3.fromRGB(50, 0, 100)
+	fechar.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fechar.Text = "X"
+	fechar.TextSize = 20
+	fechar.Font = Enum.Font.GothamBlack
+	fechar.Parent = botao
+	fechar.ZIndex = 2
+	local fc = Instance.new("UICorner")
+	fc.CornerRadius = UDim.new(1,0)
+	fc.Parent = fechar
+
+	fechar.MouseButton1Click:Connect(function()
+		gui.Enabled = false
+		coordBtn.Text = "Ativar Coordenadas"
+		coordAtivo = false
+	end)
+
+	-- Drag funcionalidade
+	local UserInputService = game:GetService("UserInputService")
+	local dragging = false
+	local dragInput, dragStart, startPos
+
+	botao.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = botao.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	botao.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			botao.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	-- Atualiza a posição a cada 0.2s
+	spawn(function()
+		while gui and gui.Enabled do
+			wait(0.2)
+			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				local pos = player.Character.HumanoidRootPart.Position
+				local x = math.floor(pos.X)
+				local y = math.floor(pos.Y)
+				local z = math.floor(pos.Z)
+				botao.Text = "X = "..x..", Y = "..y..", Z = "..z
+			end
+		end
+	end)
+end
+
+coordBtn.MouseButton1Click:Connect(function()
+	if not coordAtivo then
+		criarCoordenadasScreenGui()
+		coordBtn.Text = "Desativar Coordenadas"
+		coordAtivo = true
+	else
+		if _G.CoordenadasScreenGui then
+			_G.CoordenadasScreenGui.Enabled = false
+		end
+		coordBtn.Text = "Ativar Coordenadas"
+		coordAtivo = false
+	end
+end)
+
+-- FLY
+local ativarFlyBtn = criarBotao("AtivarFlyBtn", "Ativar Fly", 190)
+local desativarFlyBtn = criarBotao("DesativarFlyBtn", "Desativar Fly", 248)
+local flying = false
+local moveDirection = Vector3.new()
+local flySpeed = 150
+local bodyVelocity
+local uis = game:GetService("UserInputService")
+local directions = {
+    [Enum.KeyCode.W] = Vector3.new(0, 0, -1),
+    [Enum.KeyCode.S] = Vector3.new(0, 0, 1),
+    [Enum.KeyCode.A] = Vector3.new(-1, 0, 0),
+    [Enum.KeyCode.D] = Vector3.new(1, 0, 0)
+}
+
+uis.InputBegan:Connect(function(input, gameProcessed)
+    if flying and directions[input.KeyCode] then
+        moveDirection += directions[input.KeyCode]
+    end
+end)
+uis.InputEnded:Connect(function(input)
+    if flying and directions[input.KeyCode] then
+        moveDirection -= directions[input.KeyCode]
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if flying and bodyVelocity and hrp then
+        bodyVelocity.Velocity = Vector3.new(0, 3, 0)
+        if moveDirection.Magnitude > 0 then
+            local cam = workspace.CurrentCamera
+            local dir = cam.CFrame:VectorToWorldSpace(moveDirection).Unit
+            hrp.CFrame = hrp.CFrame + dir * flySpeed * 0.016
+        end
+    end
+end)
+
+ativarFlyBtn.MouseButton1Click:Connect(function()
+    if not flying and hrp then
+        flying = true
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.Velocity = Vector3.new(0, 3, 0)
+        bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+        bodyVelocity.Parent = hrp
+        ativarFlyBtn.Text = "Voando!"
+        desativarFlyBtn.Text = "Desativar Fly"
+    end
+end)
+desativarFlyBtn.MouseButton1Click:Connect(function()
+    if flying then
+        flying = false
+        moveDirection = Vector3.new()
+        if bodyVelocity then
+            bodyVelocity:Destroy()
+            bodyVelocity = nil
+        end
+        ativarFlyBtn.Text = "Ativar Fly"
+        desativarFlyBtn.Text = "Desativar Fly"
+    end
+end)
+
+-- VELOCIDADE
+local velocidadeUpBtn = criarBotao("VelocidadeUpBtn", "Dobrar VELOCIDADE", 306)
+local velocidadeDownBtn = criarBotao("VelocidadeDownBtn", "Diminuir VELOCIDADE", 364)
+local minSpeed = 4
+local maxSpeed = 200
+
+velocidadeUpBtn.MouseButton1Click:Connect(function()
+    local newSpeed = humanoid.WalkSpeed * 2
+    if newSpeed > maxSpeed then newSpeed = maxSpeed end
+    humanoid.WalkSpeed = newSpeed
+    velocidadeUpBtn.Text = "Velocidade: "..newSpeed
+    wait(1)
+    velocidadeUpBtn.Text = "Dobrar VELOCIDADE"
+end)
+
+velocidadeDownBtn.MouseButton1Click:Connect(function()
+    local newSpeed = humanoid.WalkSpeed / 2
+    if newSpeed < minSpeed then newSpeed = minSpeed end
+    humanoid.WalkSpeed = newSpeed
+    velocidadeDownBtn.Text = "Velocidade: "..newSpeed
+    wait(1)
+    velocidadeDownBtn.Text = "Diminuir VELOCIDADE"
+end)
